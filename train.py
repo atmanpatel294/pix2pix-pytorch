@@ -11,6 +11,7 @@ import torch.backends.cudnn as cudnn
 
 from networks import define_G, define_D, GANLoss, get_scheduler, update_learning_rate
 from data import get_training_set, get_test_set
+from utils import save_img
 
 # Training settings
 parser = argparse.ArgumentParser(description='pix2pix-pytorch-implementation')
@@ -120,9 +121,9 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
         loss_g.backward()
 
         optimizer_g.step()
-
-        print("===> Epoch[{}]({}/{}): Loss_D: {:.4f} Loss_G: {:.4f}".format(
-            epoch, iteration, len(training_data_loader), loss_d.item(), loss_g.item()))
+        if epoch%1000==0:
+            print("===> Epoch[{}]({}/{}): Loss_D: {:.4f} Loss_G: {:.4f}".format(
+                epoch, iteration, len(training_data_loader), loss_d.item(), loss_g.item()))
 
     update_learning_rate(net_g_scheduler, optimizer_g)
     update_learning_rate(net_d_scheduler, optimizer_d)
