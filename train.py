@@ -138,9 +138,13 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
         psnr = 10 * log10(1 / mse.item())
         avg_psnr += psnr
         out_img = prediction.detach().squeeze(0).cpu()
-        if not os.path.exists(os.path.join(opt.checkpoint, "images")):
-            os.makedirs(os.path.join(opt.checkpoint, "images"))
-        save_img(out_img, "{}/images/{}_{}".format(opt.checkpoint,epoch,img_idx))
+        input = input.detach().squeeze(0).cpu()
+        target = target.detach().squeeze(0).cpu()
+        if not os.path.exists(os.path.join(opt.checkpoint, "image")):
+            os.makedirs(os.path.join(opt.checkpoint, "image"))
+        save_img(out_img, "{}/image/{}_{}_result.jpg".format(opt.checkpoint,epoch,img_idx))
+        save_img(input, "{}/image/{}_{}_input.jpg".format(opt.checkpoint,epoch,img_idx))
+        save_img(target, "{}/image/{}_{}_target.jpg".format(opt.checkpoint,epoch,img_idx))
         img_idx += 1
 
 
@@ -148,15 +152,15 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
 
     #checkpoint
     if epoch % opt.save_freq == 0:
-        if not os.path.exists("checkpoint"):
-            os.mkdir("checkpoint")
-        if not os.path.exists(os.path.join("checkpoint", opt.dataset)):
-            os.mkdir(os.path.join("checkpoint", opt.dataset))
-        net_g_model_out_path = "checkpoint/{}/netG_model_epoch_{}.pth".format(opt.dataset, epoch)
-        net_d_model_out_path = "checkpoint/{}/netD_model_epoch_{}.pth".format(opt.dataset, epoch)
+        if not os.path.exists(opt.checkpoint):
+            os.mkdir(opt.checkpoint)
+        if not os.path.exists(os.path.join(opt.checkpoint, "model")):
+            os.makedirs(os.path.join(opt.checkpoint, "model"))
+        net_g_model_out_path = "{}/model/netG_model_epoch_{}.pth".format(opt.checkpoint, epoch)
+        net_d_model_out_path = "{}/model/netD_model_epoch_{}.pth".format(opt.checkpoint, epoch)
         torch.save(net_g, net_g_model_out_path)
         torch.save(net_d, net_d_model_out_path)
-        print("Checkpoint saved to {}".format("checkpoint" + opt.dataset))
+        print("Checkpoint saved to {}".format(opt.checkpoint + '/model'))
 
 
     
