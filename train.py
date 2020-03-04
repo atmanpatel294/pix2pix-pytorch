@@ -33,6 +33,8 @@ parser.add_argument('--cuda', action='store_true', help='use cuda?')
 parser.add_argument('--threads', type=int, default=4, help='number of threads for data loader to use')
 parser.add_argument('--seed', type=int, default=123, help='random seed to use. Default=123')
 parser.add_argument('--lamb', type=int, default=10, help='weight on L1 term in objective')
+parser.add_argument('--save_freq', type=int, default=5, help='Save after every x epochs')
+parser.add_argument('--result_dir', type=str, default='result', help='Result file path')
 opt = parser.parse_args()
 
 print(opt)
@@ -127,17 +129,24 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
 
     # test
     avg_psnr = 0
+    img_idx = 0
     for batch in testing_data_loader:
         input, target = batch[0].to(device), batch[1].to(device)
-
         prediction = net_g(input)
         mse = criterionMSE(prediction, target)
         psnr = 10 * log10(1 / mse.item())
         avg_psnr += psnr
+        out_img = out.detach().squeeze(0).cpu()
+        if not os.path.exists(opt.result_dir):
+            os.makedirs(opt.result_dir)
+        save_img(out_img, "{}/{}_{}".format(opt.result_dir,epoch,img_idx))
+        img_idx += 1
+
+
     print("===> Avg. PSNR: {:.4f} dB".format(avg_psnr / len(testing_data_loader)))
 
     #checkpoint
-    if epoch % 50 == 0:
+    if epoch % opt.save_freq == 0:
         if not os.path.exists("checkpoint"):
             os.mkdir("checkpoint")
         if not os.path.exists(os.path.join("checkpoint", opt.dataset)):
@@ -147,3 +156,6 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
         torch.save(net_g, net_g_model_out_path)
         torch.save(net_d, net_d_model_out_path)
         print("Checkpoint saved to {}".format("checkpoint" + opt.dataset))
+
+
+    
