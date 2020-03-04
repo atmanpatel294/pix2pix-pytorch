@@ -121,7 +121,7 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
         loss_g.backward()
 
         optimizer_g.step()
-        if epoch%1000==0:
+        if iteration%1000==0:
             print("===> Epoch[{}]({}/{}): Loss_D: {:.4f} Loss_G: {:.4f}".format(
                 epoch, iteration, len(training_data_loader), loss_d.item(), loss_g.item()))
 
