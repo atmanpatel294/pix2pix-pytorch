@@ -34,7 +34,7 @@ parser.add_argument('--threads', type=int, default=4, help='number of threads fo
 parser.add_argument('--seed', type=int, default=123, help='random seed to use. Default=123')
 parser.add_argument('--lamb', type=int, default=10, help='weight on L1 term in objective')
 parser.add_argument('--save_freq', type=int, default=5, help='Save after every x epochs')
-parser.add_argument('--result_dir', type=str, default='result', help='Result file path')
+parser.add_argument('--checkpoint', type=str, default='checkpoint', help='checkpoint file path')
 opt = parser.parse_args()
 
 print(opt)
@@ -136,10 +136,10 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
         mse = criterionMSE(prediction, target)
         psnr = 10 * log10(1 / mse.item())
         avg_psnr += psnr
-        out_img = out.detach().squeeze(0).cpu()
-        if not os.path.exists(opt.result_dir):
-            os.makedirs(opt.result_dir)
-        save_img(out_img, "{}/{}_{}".format(opt.result_dir,epoch,img_idx))
+        out_img = prediction.detach().squeeze(0).cpu()
+        if not os.path.exists(os.path.join(opt.checkpoint, "images")):
+            os.makedirs(os.path.join(opt.checkpoint, "images"))
+        save_img(out_img, "{}/images/{}_{}".format(opt.checkpoint,epoch,img_idx))
         img_idx += 1
 
 
