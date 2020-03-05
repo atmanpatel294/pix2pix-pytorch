@@ -44,3 +44,4 @@ for image_name in image_filenames:
     if not os.path.exists(os.path.join("result", opt.dataset)):
         os.makedirs(os.path.join("result", opt.dataset))
     save_img(out_img, "result/{}/{}".format(opt.dataset, image_name))
+    save_img(img, "result/{}/real_{}".format(opt.dataset, image_name))

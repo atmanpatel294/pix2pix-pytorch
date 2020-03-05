@@ -72,6 +72,8 @@ optimizer_d = optim.Adam(net_d.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999)
 net_g_scheduler = get_scheduler(optimizer_g, opt)
 net_d_scheduler = get_scheduler(optimizer_d, opt)
 
+loss_g_tracker, loss_g_tracker = 0, 0
+
 for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
     # train
     for iteration, batch in enumerate(training_data_loader, 1):
@@ -116,14 +118,17 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
         # Second, G(A) = B
         loss_g_l1 = criterionL1(fake_b, real_b) * opt.lamb
         
-        loss_g = loss_g_gan + loss_g_l1
-        
+        loss_g = loss_g_gan + loss_g_l1        
         loss_g.backward()
 
         optimizer_g.step()
+
+        loss_g_tracker += loss_g.item()
+        loss_d_tracker += loss_d.item()
+        
         if iteration%1000==0:
-            print("===> Epoch[{}]({}/{}): Loss_D: {:.4f} Loss_G: {:.4f}".format(
-                epoch, iteration, len(training_data_loader), loss_d.item(), loss_g.item()))
+            print("===> Epoch[{}]({}/{}): Avg Loss_D: {:.4f} Avg Loss_G: {:.4f}".format(
+                epoch, iteration, len(training_data_loader), loss_d_tracker/1000.0, loss_g_tracker/1000.0))
 
     update_learning_rate(net_g_scheduler, optimizer_g)
     update_learning_rate(net_d_scheduler, optimizer_d)
