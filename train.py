@@ -12,6 +12,7 @@ import torch.backends.cudnn as cudnn
 from networks import define_G, define_D, GANLoss, get_scheduler, update_learning_rate
 from data import get_training_set, get_test_set
 from utils import save_img
+from torchvision import transforms
 
 # Training settings
 parser = argparse.ArgumentParser(description='pix2pix-pytorch-implementation')
@@ -72,15 +73,16 @@ optimizer_d = optim.Adam(net_d.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999)
 net_g_scheduler = get_scheduler(optimizer_g, opt)
 net_d_scheduler = get_scheduler(optimizer_d, opt)
 
-loss_g_tracker, loss_g_tracker = 0, 0
+loss_g_tracker, loss_d_tracker = 0, 0
+
 
 for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
     # train
     for iteration, batch in enumerate(training_data_loader, 1):
         # forward
-        real_a, real_b = batch[0].to(device), batch[1].to(device)
+        real_a, real_a_noisy, real_b = batch[0].to(device), batch[1].to(device),batch[2].to(device)
         fake_b = net_g(real_a)
-
+        fake_b_noisy = net_g(real_a_noisy)
         ######################
         # (1) Update D network
         ######################
@@ -89,6 +91,7 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
         
         # train with fake
         fake_ab = torch.cat((real_a, fake_b), 1)
+        
         pred_fake = net_d.forward(fake_ab.detach())
         loss_d_fake = criterionGAN(pred_fake, False)
 
@@ -96,6 +99,7 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
         real_ab = torch.cat((real_a, real_b), 1)
         pred_real = net_d.forward(real_ab)
         loss_d_real = criterionGAN(pred_real, True)
+
         
         # Combined D loss
         loss_d = (loss_d_fake + loss_d_real) * 0.5
@@ -117,8 +121,9 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
 
         # Second, G(A) = B
         loss_g_l1 = criterionL1(fake_b, real_b) * opt.lamb
+        loss_g_noisy = criterionL1(fake_b,fake_b_noisy) * opt.lamb
         
-        loss_g = loss_g_gan + loss_g_l1        
+        loss_g = loss_g_gan + loss_g_l1 + loss_g_noisy   
         loss_g.backward()
 
         optimizer_g.step()
@@ -137,8 +142,10 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
     avg_psnr = 0
     img_idx = 0
     for batch in testing_data_loader:
-        input, target = batch[0].to(device), batch[1].to(device)
+        input, input_noisy, target = batch[0].to(device), batch[1].to(device), batch[2].to(device)
         prediction = net_g(input)
+        prediction_noisy = net_g(input_noisy).detach().squeeze(0).cpu()
+        input_noisy = input_noisy.detach().squeeze(0).cpu()
         mse = criterionMSE(prediction, target)
         psnr = 10 * log10(1 / mse.item())
         avg_psnr += psnr
@@ -150,6 +157,8 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
         save_img(out_img, "{}/image/{}_{}_result.jpg".format(opt.checkpoint,epoch,img_idx))
         save_img(input, "{}/image/{}_{}_input.jpg".format(opt.checkpoint,epoch,img_idx))
         save_img(target, "{}/image/{}_{}_target.jpg".format(opt.checkpoint,epoch,img_idx))
+        save_img(input_noisy, "{}/image/{}_{}_inputnoisy.jpg".format(opt.checkpoint,epoch,img_idx))
+        save_img(prediction_noisy, "{}/image/{}_{}_resultnoisy.jpg".format(opt.checkpoint,epoch,img_idx))
         img_idx += 1
 
 
