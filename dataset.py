@@ -9,8 +9,8 @@ import torchvision.transforms as transforms
 import numpy as np
 from utils import is_image_file, load_img
 
-noise_count = 5000
-noise_range = 40;
+noise_count = 25000
+noise_range = 50;
 def add_noise(img):
   # print(img.size,np.asarray(img).shape,'img')
   image_size = 286

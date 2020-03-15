@@ -63,6 +63,12 @@ print('===> Building models')
 net_g = define_G(opt.input_nc, opt.output_nc, opt.ngf, 'batch', False, 'normal', 0.02, gpu_id=device)
 net_d = define_D(opt.input_nc + opt.output_nc, opt.ndf, 'basic', gpu_id=device)
 
+resume_epoch = 30
+if resume_epoch > 0:
+	net_g = torch.load('./checkpoints_highlr/model/netG_model_epoch_'+str(resume_epoch)+'.pth')
+	net_d = torch.load('./checkpoints_highlr/model/netD_model_epoch_'+str(resume_epoch)+'.pth')
+print('\nLoaded checkpoint...\n')
+
 criterionGAN = GANLoss().to(device)
 criterionL1 = nn.L1Loss().to(device)
 criterionMSE = nn.MSELoss().to(device)
@@ -121,7 +127,7 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
 
         # Second, G(A) = B
         loss_g_l1 = criterionL1(fake_b, real_b) * opt.lamb
-        loss_g_noisy = criterionL1(fake_b,fake_b_noisy) * opt.lamb
+        loss_g_noisy = criterionL1(fake_b,fake_b_noisy) * 30
         
         loss_g = loss_g_gan + loss_g_l1 + loss_g_noisy   
         loss_g.backward()
@@ -170,8 +176,8 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
             os.mkdir(opt.checkpoint)
         if not os.path.exists(os.path.join(opt.checkpoint, "model")):
             os.makedirs(os.path.join(opt.checkpoint, "model"))
-        net_g_model_out_path = "{}/model/netG_model_epoch_{}.pth".format(opt.checkpoint, epoch)
-        net_d_model_out_path = "{}/model/netD_model_epoch_{}.pth".format(opt.checkpoint, epoch)
+        net_g_model_out_path = "{}/model/netG_model_epoch_{}.pth".format(opt.checkpoint, epoch+resume_epoch)
+        net_d_model_out_path = "{}/model/netD_model_epoch_{}.pth".format(opt.checkpoint, epoch+resume_epoch)
         torch.save(net_g, net_g_model_out_path)
         torch.save(net_d, net_d_model_out_path)
         print("Checkpoint saved to {}".format(opt.checkpoint + '/model'))
