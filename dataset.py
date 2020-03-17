@@ -11,6 +11,9 @@ from utils import is_image_file, load_img
 
 noise_count = 25000
 noise_range = 50;
+noise_count = 10000
+noise_range = 40
+
 def add_noise(img):
   # print(img.size,np.asarray(img).shape,'img')
   image_size = 286

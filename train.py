@@ -8,12 +8,12 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 import torch.backends.cudnn as cudnn
-
+import numpy as np
 from networks import define_G, define_D, GANLoss, get_scheduler, update_learning_rate
 from data import get_training_set, get_test_set
 from utils import save_img
 from torchvision import transforms
-
+import pytorch_ssim
 # Training settings
 parser = argparse.ArgumentParser(description='pix2pix-pytorch-implementation')
 parser.add_argument('--dataset', required=True, help='facades')
@@ -63,7 +63,7 @@ print('===> Building models')
 net_g = define_G(opt.input_nc, opt.output_nc, opt.ngf, 'batch', False, 'normal', 0.02, gpu_id=device)
 net_d = define_D(opt.input_nc + opt.output_nc, opt.ndf, 'basic', gpu_id=device)
 
-resume_epoch = 30
+resume_epoch = 0
 if resume_epoch > 0:
 	net_g = torch.load('./checkpoints_highlr/model/netG_model_epoch_'+str(resume_epoch)+'.pth')
 	net_d = torch.load('./checkpoints_highlr/model/netD_model_epoch_'+str(resume_epoch)+'.pth')
@@ -81,9 +81,12 @@ net_d_scheduler = get_scheduler(optimizer_d, opt)
 
 loss_g_tracker, loss_d_tracker = 0, 0
 
+ssim_scores = []
+psnr_arr = []
 
 for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
     # train
+    loss_g_tracker, loss_d_tracker, loss_ssim_tracker = 0, 0, 0
     for iteration, batch in enumerate(training_data_loader, 1):
         # forward
         real_a, real_a_noisy, real_b = batch[0].to(device), batch[1].to(device),batch[2].to(device)
@@ -120,6 +123,13 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
 
         optimizer_g.zero_grad()
 
+
+	# SSIM LOSS
+	#loss_ssim = pytorch_ssim.ssim(fake_b,real_b)
+	#loss_ssim_ = pytorch_ssim.ssim(real_b,real_b)
+        loss_ssim = pytorch_ssim.ssim(fake_b,real_b)
+        loss_ssim_ = pytorch_ssim.ssim(real_b,real_b)
+
         # First, G(A) should fake the discriminator
         fake_ab = torch.cat((real_a, fake_b), 1)
         pred_fake = net_d.forward(fake_ab)
@@ -136,7 +146,8 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
 
         loss_g_tracker += loss_g.item()
         loss_d_tracker += loss_d.item()
-        
+      #  print("SSIM Loss: %f %f"%(loss_ssim.item(),loss_ssim_.item()))
+	
         if iteration%1000==0:
             print("===> Epoch[{}]({}/{}): Avg Loss_D: {:.4f} Avg Loss_G: {:.4f}".format(
                 epoch, iteration, len(training_data_loader), loss_d_tracker/1000.0, loss_g_tracker/1000.0))
@@ -147,10 +158,16 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
     # test
     avg_psnr = 0
     img_idx = 0
+    ssim_avg = 0
+    ssim_avg_noisy = 0
     for batch in testing_data_loader:
         input, input_noisy, target = batch[0].to(device), batch[1].to(device), batch[2].to(device)
         prediction = net_g(input)
-        prediction_noisy = net_g(input_noisy).detach().squeeze(0).cpu()
+        prediction_noisy = net_g(input_noisy)        
+        ssim_avg += pytorch_ssim.ssim(target,prediction).item()
+        ssim_avg_noisy += pytorch_ssim.ssim(target,prediction_noisy).item()
+
+        prediction_noisy = prediction_noisy.detach().squeeze(0).cpu()
         input_noisy = input_noisy.detach().squeeze(0).cpu()
         mse = criterionMSE(prediction, target)
         psnr = 10 * log10(1 / mse.item())
@@ -169,7 +186,9 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
 
 
     print("===> Avg. PSNR: {:.4f} dB".format(avg_psnr / len(testing_data_loader)))
-
+    print("==> Avg. SSIM and SSIM Noisy: %f %f"%(ssim_avg / img_idx, ssim_avg_noisy / img_idx))
+    ssim_scores.append([ssim_avg/img_idx, ssim_avg_noisy/img_idx])
+    psnr_arr.append(avg_psnr / len(testing_data_loader))    
     #checkpoint
     if epoch % opt.save_freq == 0:
         if not os.path.exists(opt.checkpoint):
@@ -183,4 +202,5 @@ for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
         print("Checkpoint saved to {}".format(opt.checkpoint + '/model'))
 
 
-    
+    np.save('ssim_scores_1.npy',np.array(ssim_scores))
+    np.save('psnr_values_1.npy',np.array(psnr_arr))
