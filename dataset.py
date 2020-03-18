@@ -14,30 +14,65 @@ noise_range = 50;
 noise_count = 10000
 noise_range = 40
 
+
+def noisy(noise_typ,image):
+    if noise_typ == "s&p":
+        row,col,ch = image.shape
+        s_vs_p = 0.1
+        amount = 0.05
+        out = np.copy(image)
+        # Salt mode
+        num_salt = np.ceil(amount * image.size * s_vs_p)
+        coords = [np.random.randint(0, i - 1, int(num_salt))
+                for i in image.shape]
+        out[coords] = 255
+
+        # Pepper mode
+        num_pepper = np.ceil(amount* image.size * (1. - s_vs_p))
+        coords = [np.random.randint(0, i - 1, int(num_pepper))
+                for i in image.shape]
+        out[coords] = 0
+        return out
+    elif noise_typ == 'lines':
+        row,col,ch = image.shape
+        noise = image.copy()
+        lines = np.random.randint(20)
+        for i in range(lines):
+            x = np.random.randint(row)
+            y = np.random.randint(col)
+            for j in range(x,x + np.random.randint(row-x)):
+                noise[j][y][0] = noise[j][y][1] = noise[j][y][2] = np.random.randint(100)
+        return noise
+
+
+
+
 def add_noise(img):
   # print(img.size,np.asarray(img).shape,'img')
-  image_size = 286
-  noiseimg = np.zeros((3, image_size, image_size), dtype=np.float32)
-  # prepare a noise image
-  for ii in range(noise_count):
-      xx = random.randrange(image_size)
-      yy = random.randrange(image_size)
+    image_size = 286
+    noiseimg = np.zeros((3, image_size, image_size), dtype=np.float32)
+    # prepare a noise image
+    for ii in range(noise_count):
+        xx = random.randrange(image_size)
+        yy = random.randrange(image_size)
 
-      noiseimg[0][yy][xx] += random.randrange(-noise_range, noise_range)
-      noiseimg[1][yy][xx] += random.randrange(-noise_range, noise_range)
-      noiseimg[2][yy][xx] += random.randrange(-noise_range, noise_range)
+        noiseimg[0][yy][xx] += random.randrange(-noise_range, noise_range)
+        noiseimg[1][yy][xx] += random.randrange(-noise_range, noise_range)
+        noiseimg[2][yy][xx] += random.randrange(-noise_range, noise_range)
 
-  x = noiseimg.astype(float)
-  y = np.asarray(img).astype(float)
-  y = np.moveaxis(y, 2, 0) 
-  # print(x.shape,y.shape)
-  result = np.clip(x+y,0,255).astype('uint8')
-  # print(np.max((result)),np.min(x+y))
-  # result = np.moveaxis(y, 0, -1) 
-  # print(result.shape)
-  # result = Image.fromarray(result)
-  result = np.moveaxis(result, 0, -1) 
-  return result
+    x = noiseimg.astype(float)
+    y = np.asarray(img).astype(float)
+    y = np.moveaxis(y, 2, 0) 
+    # print(x.shape,y.shape)
+    result = np.clip(x+y,0,255).astype('uint8')
+    # print(np.max((result)),np.min(x+y))
+    # result = np.moveaxis(y, 0, -1) 
+    # print(result.shape)
+    # result = Image.fromarray(result)
+    result = noisy('lines',np.asarray(result))
+    result = noisy('s&p',np.asarray(result))
+    result = np.moveaxis(result, 0, -1) 
+    return result
 
 class DatasetFromFolder(data.Dataset):
     def __init__(self, image_dir, direction):
